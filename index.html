@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="de"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BERGFEST – Catch Me If You Can</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+html,body,#map{height:100%;margin:0}body{font-family:Arial,sans-serif;background:#111}
+#map{height:100vh}.top{position:fixed;z-index:1000;top:10px;left:10px;right:10px;display:flex;gap:8px}
+.status{flex:1;background:#111d;color:#fff;border-radius:12px;padding:10px 14px;box-shadow:0 3px 12px #0006}
+.title{font-weight:800;font-size:15px}.sub{font-size:12px;opacity:.8;margin-top:3px}
+.badge{min-width:118px;text-align:center;border-radius:12px;padding:10px 8px;font-weight:900;color:#fff}
+.unknown{background:#555}.inside{background:#17823b}.outside,.zone{background:#b42318}
+.locbtn{position:fixed;z-index:1000;right:14px;bottom:24px;border:0;border-radius:50%;width:58px;height:58px;font-size:25px;background:#ff7a00;color:#111}
+.legend{position:fixed;z-index:1000;left:10px;bottom:14px;background:#111d;color:#fff;border-radius:12px;padding:9px 12px;font-size:12px;line-height:1.6}
+.line-label{background:#ffd400;border:2px solid #111;border-radius:7px;padding:4px 7px;font-weight:900;font-size:11px;white-space:nowrap;box-shadow:0 2px 6px #0005}
+</style></head><body>
+<div id="map"></div>
+<div class="top"><div class="status"><div class="title">BERGFEST · CATCH ME IF YOU CAN</div><div class="sub" id="coords">Standort wird gesucht …</div></div>
+<div id="badge" class="badge unknown">📍 PRÜFE …</div></div>
+<button class="locbtn" onclick="locate()">⌖</button>
+<div class="legend"><b>Legende</b><br>🔵 Spielfeldgrenze<br>🟡 Meldelinie<br>🔴 Sperrzone<br>📍 eigener Standort</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const corners=[[51.395163,7.545033],[51.43499,7.675838],[51.405631,7.696524],[51.366293,7.567837]];
+const lines=[{"name":"Meldelinie 1 – KM 2","p":[[51.42578125,7.645597457885742],[51.396339416503906,7.6661272048950195]]},{"name":"Meldelinie 2 – KM 4","p":[[51.417320251464844,7.617801666259766],[51.387969970703125,7.638743877410889]]},{"name":"Meldelinie 3 – KM 6","p":[[51.409488677978516,7.592077732086182],[51.38029098510742,7.613626003265381]]},{"name":"Meldelinie 4 – KM 7,5","p":[[51.404075622558594,7.5742950439453125],[51.374855041503906,7.595843315124512]]},{"name":"Meldelinie 5 – KM 9","p":[[51.3984489440918,7.555820941925049],[51.36964416503906,7.578798294067383]]}];
+const zones=[{"name":"Sperrzone – Kalthof","p":[[51.43044662475586,7.67868185043335],[51.4279899597168,7.666344165802002],[51.422183990478516,7.6654157638549805],[51.42031478881836,7.658431529998779],[51.4139404296875,7.66069221496582],[51.415767669677734,7.670710563659668],[51.42262268066406,7.676309108734131],[51.42094421386719,7.679743766784668],[51.42478561401367,7.675959587097168]]},{"name":"Sperrzone – Nordost","p":[[51.405662536621094,7.694425106048584],[51.40568542480469,7.69256591796875],[51.402950286865234,7.691962718963623],[51.4017333984375,7.687146186828613],[51.398048400878906,7.6872239112854],[51.39836883544922,7.692617416381836],[51.39998245239258,7.695685863494873],[51.398990631103516,7.697910308837891]]},{"name":"Sperrzone – Tiefendorf","p":[[51.39201736450195,7.561350345611572],[51.389862060546875,7.562070846557617],[51.390235900878906,7.56259822845459],[51.38840103149414,7.56704044342041],[51.39112091064453,7.565280437469482]]},{"name":"Sperrzone – unten links","p":[[51.37167739868164,7.5640153884887695],[51.366268157958984,7.568301200866699],[51.36725997924805,7.572065830230713],[51.37155532836914,7.566406726837158]]},{"name":"Sperrzone – Stübbeken","p":[[51.3774299621582,7.6042585372924805],[51.37852478027344,7.602606773376465],[51.378379821777344,7.596440315246582],[51.377140045166016,7.593792915344238],[51.37571334838867,7.595433235168457],[51.374839782714844,7.601068496704102],[51.376407623291016,7.604226589202881]]}];
+const start=[51.418609619140625,7.686916828155518], goalLine=[[51.395164489746094,7.545032978057861],[51.366294860839844,7.567837238311768]];
+const map=L.map("map").setView([51.401,7.62],12);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap-Mitwirkende"}).addTo(map);
+L.polygon(corners,{color:"#087cff",weight:5,fill:false}).addTo(map);
+lines.forEach((x,i)=>{
+  L.polyline(x.p,{color:"#ffd400",weight:5,dashArray:"10 9"}).addTo(map);
+  const mid=[(x.p[0][0]+x.p[1][0])/2,(x.p[0][1]+x.p[1][1])/2];
+  L.marker(mid,{icon:L.divIcon({className:"",html:'<div class="line-label">'+x.name.replace(" – ","<br>")+"</div>",iconSize:null})}).addTo(map);
+});
+zones.forEach(x=>L.polygon(x.p,{color:"#e11",weight:2,fillColor:"#e11",fillOpacity:.40}).addTo(map).bindTooltip(x.name));
+L.marker(start).addTo(map).bindTooltip("START",{permanent:true});
+L.polyline(goalLine,{color:"#ff7a00",weight:8}).addTo(map).bindTooltip("ZIEL",{permanent:true});
+function pip(pt,poly){let x=pt[1],y=pt[0],inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){let xi=poly[i][1],yi=poly[i][0],xj=poly[j][1],yj=poly[j][0];if(((yi>y)!=(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside}return inside}
+let me=null;
+function update(pos){let ll={lat:pos.coords.latitude,lng:pos.coords.longitude};if(!me)me=L.circleMarker(ll,{radius:9,color:"#fff",weight:3,fillColor:"#087cff",fillOpacity:1}).addTo(map);else me.setLatLng(ll);
+let inside=pip([ll.lat,ll.lng],corners),blocked=zones.some(z=>pip([ll.lat,ll.lng],z.p)),b=document.getElementById("badge");
+if(blocked){b.className="badge zone";b.textContent="🔴 SPERRZONE"}else if(inside){b.className="badge inside";b.textContent="🟢 IM SPIELFELD"}else{b.className="badge outside";b.textContent="🔴 AUSSERHALB"}
+document.getElementById("coords").textContent=ll.lat.toFixed(5)+", "+ll.lng.toFixed(5)+" · Genauigkeit ±"+Math.round(pos.coords.accuracy||0)+" m"}
+function err(){document.getElementById("badge").className="badge unknown";document.getElementById("badge").textContent="⚠️ STANDORT AUS";document.getElementById("coords").textContent="Bitte Standortfreigabe aktivieren."}
+function locate(){if(!navigator.geolocation){err();return}navigator.geolocation.getCurrentPosition(p=>{update(p);map.setView([p.coords.latitude,p.coords.longitude],15)},err,{enableHighAccuracy:true,maximumAge:5000,timeout:15000});navigator.geolocation.watchPosition(update,err,{enableHighAccuracy:true,maximumAge:3000,timeout:15000})}
+locate();
+</script></body></html>
