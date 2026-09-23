@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BERGFEST – Catch Me If You Can</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+html,body,#map{height:100%;margin:0}
+body{font-family:Arial,sans-serif;background:#111}
+#map{height:100vh}
+.top{position:fixed;z-index:1000;top:10px;left:10px;right:10px;display:flex;gap:8px}
+.status{flex:1;background:#111d;color:#fff;border-radius:12px;padding:10px 14px;box-shadow:0 3px 12px #0006}
+.title{font-weight:800;font-size:15px}
+.sub{font-size:12px;opacity:.8;margin-top:3px}
+.badge{min-width:118px;text-align:center;border-radius:12px;padding:10px 8px;font-weight:900;color:#fff}
+.unknown{background:#555}.inside{background:#17823b}.outside{background:#b42318}
+.locbtn{position:fixed;z-index:1000;right:14px;bottom:24px;border:0;border-radius:50%;width:58px;height:58px;font-size:25px;background:#ff7a00;color:#111}
+.legend{position:fixed;z-index:1000;left:10px;bottom:14px;background:#111d;color:#fff;border-radius:12px;padding:9px 12px;font-size:12px;line-height:1.6}
+.line-label{background:#ffd400;border:2px solid #111;border-radius:7px;padding:4px 7px;font-weight:900;font-size:11px;white-space:nowrap;box-shadow:0 2px 6px #0005}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="top">
+  <div class="status">
+    <div class="title">BERGFEST · CATCH ME IF YOU CAN</div>
+    <div class="sub" id="coords">Standort wird gesucht …</div>
+  </div>
+  <div id="badge" class="badge unknown">📍 PRÜFE …</div>
+</div>
+
+<button class="locbtn" onclick="locate()">⌖</button>
+
+<div class="legend">
+  <b>Legende</b><br>
+  🔵 Spielfeldgrenze<br>
+  🟡 Meldelinie<br>
+  🔴 Sperrbezirk<br>
+  📍 eigener Standort
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const corners = [
+  [51.395163,7.545033],
+  [51.434990,7.675838],
+  [51.405631,7.696524],
+  [51.366293,7.567837]
+];
+
+const lines = [
+  {name:"Meldelinie 1 – KM 2", p:[[51.4270246,7.6496770],[51.3982026,7.6722233]]},
+  {name:"Meldelinie 2 – KM 4", p:[[51.4190592,7.6235160],[51.3902116,7.6460823]]},
+  {name:"Meldelinie 3 – KM 6", p:[[51.4110938,7.5973550],[51.3822206,7.6199413]]},
+  {name:"Meldelinie 4 – KM 7,5", p:[[51.4051198,7.5777343],[51.3762274,7.6003356]]},
+  {name:"Meldelinie 5 – KM 9", p:[[51.3991457,7.5581135],[51.3702342,7.5807299]]}
+];
+
+const start = [51.4139,7.69196];
+const goalLine = [
+  [51.395163,7.545033],
+  [51.366293,7.567837]
+];
+
+const map = L.map("map").setView([51.401,7.62],12);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+  maxZoom:19,
+  attribution:"© OpenStreetMap-Mitwirkende"
+}).addTo(map);
+
+L.polygon(corners,{
+  color:"#087cff",
+  weight:5,
+  fill:false
+}).addTo(map);
+
+const sperrbezirke = [  [[51.4301215,7.6663953],[51.4306427,7.6745444],[51.4280195,7.6774524],[51.4229823,7.6774379],[51.4190089,7.6741204],[51.4162317,7.6680914],[51.4166931,7.6611166],[51.4196796,7.6597739],[51.4229224,7.6624955],[51.4255670,7.6652166]],
+  [[51.4088593,7.6907535],[51.4056320,7.6965241],[51.4026108,7.6956439],[51.4007797,7.6902142],[51.4012108,7.6849737],[51.4026108,7.6811404],[51.4051933,7.6828899],[51.4067039,7.6874299]],
+  [[51.3931389,7.5619521],[51.3929214,7.5659528],[51.3910217,7.5677691],[51.3890190,7.5664110],[51.3882904,7.5625648],[51.3898773,7.5605822],[51.3914566,7.5601001]],
+  [[51.3806648,7.5977279],[51.3807487,7.6033117],[51.3792496,7.6053320],[51.3771286,7.6044675],[51.3761864,7.6009027],[51.3772659,7.5973603],[51.3789711,7.5961925]],
+  [[51.3737259,7.5635710],[51.3728600,7.5672388],[51.3704147,7.5688858],[51.3681869,7.5698667],[51.3665047,7.5678396],[51.3672638,7.5651712],[51.3693924,7.5633559],[51.3718338,7.5617132]]
+];
+
+sperrbezirke.forEach(zone=>{
+  L.polygon(zone,{
+    color:"#e31b23",
+    weight:2,
+    fillColor:"#e31b23",
+    fillOpacity:0.48
+  }).addTo(map);
+});
+
+lines.forEach(x=>{
+  L.polyline(x.p,{
+    color:"#ffd400",
+    weight:5,
+    dashArray:"10 9"
+  }).addTo(map);
+
+  const mid=[
+    (x.p[0][0]+x.p[1][0])/2,
+    (x.p[0][1]+x.p[1][1])/2
+  ];
+
+  L.marker(mid,{
+    icon:L.divIcon({
+      className:"",
+      html:'<div class="line-label">'+x.name.replace(" – ","<br>")+"</div>",
+      iconSize:null
+    })
+  }).addTo(map);
+});
+
+L.marker(start).addTo(map).bindTooltip("START",{permanent:true});
+
+L.polyline(goalLine,{
+  color:"#ff7a00",
+  weight:8
+}).addTo(map).bindTooltip("ZIEL",{permanent:true});
+
+function pip(pt,poly){
+  let x=pt[1],y=pt[0],inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    let xi=poly[i][1],yi=poly[i][0],
+        xj=poly[j][1],yj=poly[j][0];
+
+    if(((yi>y)!=(yj>y)) &&
+       (x<(xj-xi)*(y-yi)/(yj-yi)+xi)){
+      inside=!inside;
+    }
+  }
+  return inside;
+}
+
+let me=null;
+
+function update(pos){
+  let ll={
+    lat:pos.coords.latitude,
+    lng:pos.coords.longitude
+  };
+
+  if(!me){
+    me=L.circleMarker(ll,{
+      radius:9,
+      color:"#fff",
+      weight:3,
+      fillColor:"#087cff",
+      fillOpacity:1
+    }).addTo(map);
+  }else{
+    me.setLatLng(ll);
+  }
+
+  let inside=pip([ll.lat,ll.lng],corners);
+  let b=document.getElementById("badge");
+
+  if(inside){
+    b.className="badge inside";
+    b.textContent="🟢 IM SPIELFELD";
+  }else{
+    b.className="badge outside";
+    b.textContent="🔴 AUSSERHALB";
+  }
+
+  document.getElementById("coords").textContent=
+    ll.lat.toFixed(5)+", "+ll.lng.toFixed(5)+
+    " · Genauigkeit ±"+Math.round(pos.coords.accuracy||0)+" m";
+}
+
+function err(){
+  document.getElementById("badge").className="badge unknown";
+  document.getElementById("badge").textContent="⚠️ STANDORT AUS";
+  document.getElementById("coords").textContent=
+    "Bitte Standortfreigabe aktivieren.";
+}
+
+function locate(){
+  if(!navigator.geolocation){
+    err();
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    p=>{
+      update(p);
+      map.setView([p.coords.latitude,p.coords.longitude],15);
+    },
+    err,
+    {
+      enableHighAccuracy:true,
+      maximumAge:5000,
+      timeout:15000
+    }
+  );
+
+  navigator.geolocation.watchPosition(
+    update,
+    err,
+    {
+      enableHighAccuracy:true,
+      maximumAge:3000,
+      timeout:15000
+    }
+  );
+}
+
+locate();
+</script>
+</body>
+</html>
